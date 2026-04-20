@@ -1,0 +1,12 @@
+{
+  "name": "tst-bff",
+  "version": "1.0.0",
+  "description": "Backend-for-Frontend gateway. The only backend service the frontend talks to.",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

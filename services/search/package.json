@@ -1,0 +1,11 @@
+{
+  "name": "tst-search-service",
+  "version": "1.0.0",
+  "description": "Read-only search over APPROVED salary submissions.",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}

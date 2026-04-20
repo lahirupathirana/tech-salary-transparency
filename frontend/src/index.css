@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(26,164,111,0.08), transparent 60%),
+      radial-gradient(800px 400px at -10% 20%, rgba(20,20,43,0.06), transparent 60%),
+      #f7f7f8;
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4 { font-family: 'Space Grotesk', system-ui, sans-serif; letter-spacing: -0.02em; }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-ink-100 shadow-[0_1px_2px_rgba(20,20,43,0.04),0_8px_24px_-12px_rgba(20,20,43,0.08)];
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500;
+  }
+  .btn-primary  { @apply btn bg-ink-900 text-white hover:bg-ink-800 disabled:opacity-50; }
+  .btn-accent   { @apply btn bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50; }
+  .btn-ghost    { @apply btn bg-transparent text-ink-700 hover:bg-ink-100; }
+  .btn-outline  { @apply btn bg-white border border-ink-200 text-ink-800 hover:border-ink-300; }
+  .input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-sm text-ink-900
+           placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500;
+  }
+  .label  { @apply block text-xs font-medium text-ink-600 mb-1.5 uppercase tracking-wide; }
+  .badge  { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium; }
+  .money  { @apply font-mono tabular-nums; }
+}

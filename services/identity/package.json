@@ -1,0 +1,16 @@
+{
+  "name": "tst-identity-service",
+  "version": "1.0.0",
+  "description": "Identity service - user accounts, JWT issuance, bcrypt password hashing.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
+  }
+}

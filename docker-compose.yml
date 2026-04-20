@@ -1,0 +1,153 @@
+# ======================================================================
+# Tech Salary Transparency - Docker Compose
+# ----------------------------------------------------------------------
+# Brings up 7 Node services + 1 Postgres + React frontend behind Nginx.
+# All backend services live on an internal network; only the frontend
+# (80) and the BFF (through the frontend's Nginx proxy) are reachable
+# from the host. The BFF itself listens on 4000 for direct debugging.
+# ======================================================================
+
+services:
+  # -------- DATABASE --------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: tst-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -------- IDENTITY SERVICE ------------------------------------------
+  identity:
+    build: ./services/identity
+    container_name: tst-identity
+    restart: unless-stopped
+    environment:
+      PORT: 4001
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # -------- SALARY SUBMISSION SERVICE ---------------------------------
+  salary-submission:
+    build: ./services/salary-submission
+    container_name: tst-salary-submission
+    restart: unless-stopped
+    environment:
+      PORT: 4002
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APPROVAL_THRESHOLD: ${APPROVAL_THRESHOLD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # -------- VOTE SERVICE ----------------------------------------------
+  vote:
+    build: ./services/vote
+    container_name: tst-vote
+    restart: unless-stopped
+    environment:
+      PORT: 4003
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APPROVAL_THRESHOLD: ${APPROVAL_THRESHOLD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # -------- SEARCH SERVICE --------------------------------------------
+  search:
+    build: ./services/search
+    container_name: tst-search
+    restart: unless-stopped
+    environment:
+      PORT: 4004
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # -------- STATS SERVICE ---------------------------------------------
+  stats:
+    build: ./services/stats
+    container_name: tst-stats
+    restart: unless-stopped
+    environment:
+      PORT: 4005
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # -------- BFF (Backend-for-Frontend) --------------------------------
+  bff:
+    build: ./services/bff
+    container_name: tst-bff
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      JWT_SECRET: ${JWT_SECRET}
+      IDENTITY_URL: http://identity:4001
+      SUBMISSION_URL: http://salary-submission:4002
+      VOTE_URL: http://vote:4003
+      SEARCH_URL: http://search:4004
+      STATS_URL: http://stats:4005
+    depends_on:
+      - identity
+      - salary-submission
+      - vote
+      - search
+      - stats
+    ports:
+      - "4000:4000"
+    networks:
+      - internal
+
+  # -------- FRONTEND (React, served by Nginx) -------------------------
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: tst-frontend
+    restart: unless-stopped
+    environment:
+      BFF_URL: http://bff:4000
+    depends_on:
+      - bff
+    ports:
+      - "80:80"
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge
