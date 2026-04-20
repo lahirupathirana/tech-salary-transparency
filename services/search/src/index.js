@@ -56,7 +56,7 @@ app.get('/search', async (req, res) => {
     const rowsQ = pool.query(
       `SELECT id, company, role_title, level, location,
               years_experience, base_salary, bonus, equity,
-              currency, status, vote_score, created_at
+              currency, status, vote_score, anonymize, created_at
          FROM salary.submissions
          ${whereSql}
          ORDER BY created_at DESC

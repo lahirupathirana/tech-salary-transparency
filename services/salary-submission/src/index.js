@@ -43,7 +43,9 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'salary-subm
 /**
  * POST /submissions
  * If anonymize=true OR no token is supplied, the record is saved with
- * submitter_token = NULL so there is no way to trace it back.
+ * submitter_token = NULL so there is no way to trace it back. The
+ * `anonymize` flag itself is also persisted as a boolean column so
+ * the choice is auditable independently of the token value.
  */
 app.post('/submissions', async (req, res) => {
   const errors = validateSubmission(req.body);
@@ -55,19 +57,21 @@ app.post('/submissions', async (req, res) => {
     currency = 'USD', anonymize = false, submitterToken = null,
   } = req.body;
 
-  const tokenToStore = anonymize ? null : submitterToken;
+  // If the caller asked for anonymity OR sent no token, force anonymous.
+  const effectiveAnonymize = !!anonymize || !submitterToken;
+  const tokenToStore = effectiveAnonymize ? null : submitterToken;
 
   try {
     const result = await pool.query(
       `INSERT INTO salary.submissions
-         (submitter_token, company, role_title, level, location,
+         (submitter_token, anonymize, company, role_title, level, location,
           years_experience, base_salary, bonus, equity, currency)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING id, company, role_title, level, location,
                  years_experience, base_salary, bonus, equity,
-                 currency, status, vote_score, created_at`,
+                 currency, status, vote_score, anonymize, created_at`,
       [
-        tokenToStore,
+        tokenToStore, effectiveAnonymize,
         company.trim(), roleTitle.trim(), level.trim(),
         location ? location.trim() : null,
         yearsExperience, baseSalary, bonus, equity, currency,
@@ -87,7 +91,7 @@ app.get('/submissions/:id', async (req, res) => {
     const r = await pool.query(
       `SELECT id, company, role_title, level, location,
               years_experience, base_salary, bonus, equity,
-              currency, status, vote_score, created_at
+              currency, status, vote_score, anonymize, created_at
          FROM salary.submissions WHERE id = $1`,
       [req.params.id],
     );
@@ -105,7 +109,7 @@ app.get('/submissions/status/pending', async (_req, res) => {
     const r = await pool.query(
       `SELECT id, company, role_title, level, location,
               years_experience, base_salary, bonus, equity,
-              currency, status, vote_score, created_at
+              currency, status, vote_score, anonymize, created_at
          FROM salary.submissions
         WHERE status = 'PENDING'
         ORDER BY created_at DESC

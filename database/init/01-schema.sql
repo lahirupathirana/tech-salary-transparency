@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS salary.submissions (
     -- NEVER an email or user_id. Cross-schema FK is intentionally avoided
     -- to enforce the privacy boundary at the service layer.
     submitter_token   UUID,
+    -- Explicit record of the user's anonymize choice at submission time.
+    -- Even if a submitter_token is present (logged-in user, not asking
+    -- for anonymity), anonymize=FALSE; if NULL token, anonymize=TRUE.
+    anonymize         BOOLEAN NOT NULL DEFAULT TRUE,
     company           VARCHAR(120) NOT NULL,
     role_title        VARCHAR(120) NOT NULL,
     level             VARCHAR(40)  NOT NULL,
@@ -88,19 +92,19 @@ CREATE INDEX IF NOT EXISTS idx_votes_submission ON community.votes(submission_id
 -- ---------------------------------------------------------------------
 INSERT INTO salary.submissions
     (company, role_title, level, location, years_experience,
-     base_salary, bonus, equity, currency, status, vote_score, approved_at)
+     base_salary, bonus, equity, currency, status, vote_score, approved_at, anonymize)
 VALUES
-    ('Google',    'Software Engineer',      'L4', 'Mountain View, CA', 3.0, 165000, 25000, 40000, 'USD', 'APPROVED', 5, NOW()),
-    ('Google',    'Software Engineer',      'L5', 'Mountain View, CA', 6.0, 210000, 45000, 90000, 'USD', 'APPROVED', 8, NOW()),
-    ('Meta',      'Software Engineer',      'E4', 'Menlo Park, CA',    4.0, 180000, 30000, 65000, 'USD', 'APPROVED', 4, NOW()),
-    ('Meta',      'Product Manager',        'E5', 'New York, NY',      7.0, 210000, 50000, 80000, 'USD', 'APPROVED', 6, NOW()),
-    ('Amazon',    'SDE II',                 'L5', 'Seattle, WA',       3.5, 160000, 20000, 55000, 'USD', 'APPROVED', 3, NOW()),
-    ('Amazon',    'SDE III',                'L6', 'Seattle, WA',       6.5, 195000, 40000, 95000, 'USD', 'APPROVED', 7, NOW()),
-    ('Microsoft', 'Software Engineer',      '62', 'Redmond, WA',       4.0, 155000, 22000, 45000, 'USD', 'APPROVED', 4, NOW()),
-    ('Apple',     'ICT4',                   'ICT4', 'Cupertino, CA',   5.0, 185000, 30000, 70000, 'USD', 'APPROVED', 5, NOW()),
-    ('Netflix',   'Senior Software Engineer','SR', 'Los Gatos, CA',    7.0, 450000,     0,     0, 'USD', 'APPROVED', 9, NOW()),
-    ('Stripe',    'Software Engineer',      'L3', 'Remote',            3.0, 175000, 25000, 60000, 'USD', 'APPROVED', 4, NOW()),
-    ('Airbnb',    'Data Scientist',         'L4', 'San Francisco, CA', 4.0, 170000, 25000, 55000, 'USD', 'APPROVED', 3, NOW()),
-    ('Shopify',   'Senior Developer',       'L5', 'Remote',            6.0, 165000, 20000, 50000, 'CAD', 'APPROVED', 3, NOW()),
-    ('Uber',      'Software Engineer II',   'L4', 'San Francisco, CA', 3.5, 170000, 28000, 60000, 'USD', 'PENDING',  1, NULL),
-    ('Salesforce','MTS',                    'MTS', 'San Francisco, CA',3.0, 155000, 20000, 40000, 'USD', 'PENDING',  0, NULL);
+    ('Google',    'Software Engineer',      'L4', 'Mountain View, CA', 3.0, 165000, 25000, 40000, 'USD', 'APPROVED', 5, NOW(), TRUE),
+    ('Google',    'Software Engineer',      'L5', 'Mountain View, CA', 6.0, 210000, 45000, 90000, 'USD', 'APPROVED', 8, NOW(), TRUE),
+    ('Meta',      'Software Engineer',      'E4', 'Menlo Park, CA',    4.0, 180000, 30000, 65000, 'USD', 'APPROVED', 4, NOW(), TRUE),
+    ('Meta',      'Product Manager',        'E5', 'New York, NY',      7.0, 210000, 50000, 80000, 'USD', 'APPROVED', 6, NOW(), TRUE),
+    ('Amazon',    'SDE II',                 'L5', 'Seattle, WA',       3.5, 160000, 20000, 55000, 'USD', 'APPROVED', 3, NOW(), TRUE),
+    ('Amazon',    'SDE III',                'L6', 'Seattle, WA',       6.5, 195000, 40000, 95000, 'USD', 'APPROVED', 7, NOW(), TRUE),
+    ('Microsoft', 'Software Engineer',      '62', 'Redmond, WA',       4.0, 155000, 22000, 45000, 'USD', 'APPROVED', 4, NOW(), TRUE),
+    ('Apple',     'ICT4',                   'ICT4', 'Cupertino, CA',   5.0, 185000, 30000, 70000, 'USD', 'APPROVED', 5, NOW(), TRUE),
+    ('Netflix',   'Senior Software Engineer','SR', 'Los Gatos, CA',    7.0, 450000,     0,     0, 'USD', 'APPROVED', 9, NOW(), TRUE),
+    ('Stripe',    'Software Engineer',      'L3', 'Remote',            3.0, 175000, 25000, 60000, 'USD', 'APPROVED', 4, NOW(), TRUE),
+    ('Airbnb',    'Data Scientist',         'L4', 'San Francisco, CA', 4.0, 170000, 25000, 55000, 'USD', 'APPROVED', 3, NOW(), TRUE),
+    ('Shopify',   'Senior Developer',       'L5', 'Remote',            6.0, 165000, 20000, 50000, 'CAD', 'APPROVED', 3, NOW(), TRUE),
+    ('Uber',      'Software Engineer II',   'L4', 'San Francisco, CA', 3.5, 170000, 28000, 60000, 'USD', 'PENDING',  1, NULL, TRUE),
+    ('Salesforce','MTS',                    'MTS', 'San Francisco, CA',3.0, 155000, 20000, 40000, 'USD', 'PENDING',  0, NULL, TRUE);

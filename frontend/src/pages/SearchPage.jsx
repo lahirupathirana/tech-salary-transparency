@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, formatMoney } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -7,26 +7,41 @@ const EMPTY = { company: '', role: '', level: '', location: '', minSalary: '', m
 
 export default function SearchPage() {
   const { user } = useAuth();
+  const [urlParams, setUrlParams] = useSearchParams();
   const [filters, setFilters] = useState(EMPTY);
+  const [includePending, setIncludePending] = useState(urlParams.get('includePending') === '1');
   const [facets, setFacets]   = useState({ companies: [], roles: [], levels: [] });
   const [data, setData]       = useState({ rows: [], total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
-  const load = useCallback(async (f) => {
+  const load = useCallback(async (f, withPending) => {
     setLoading(true); setError('');
     try {
       const clean = Object.fromEntries(Object.entries(f).filter(([, v]) => v !== ''));
+      if (withPending) clean.includePending = '1';
       const res = await api.feed({ ...clean, limit: 100 });
       setData(res);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { api.facets().then(setFacets).catch(() => {}); load(EMPTY); }, [load]);
+  useEffect(() => {
+    api.facets().then(setFacets).catch(() => {});
+    load(EMPTY, urlParams.get('includePending') === '1');
+  }, [load, urlParams]);
 
-  const submit = (e) => { e.preventDefault(); load(filters); };
-  const reset  = ()  => { setFilters(EMPTY); load(EMPTY); };
+  const submit = (e) => { e.preventDefault(); load(filters, includePending); };
+  const reset  = ()  => {
+    setFilters(EMPTY); setIncludePending(false);
+    setUrlParams({});
+    load(EMPTY, false);
+  };
+  const togglePending = (on) => {
+    setIncludePending(on);
+    if (on) setUrlParams({ includePending: '1' }); else setUrlParams({});
+    load(filters, on);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
@@ -80,13 +95,32 @@ export default function SearchPage() {
           </Field>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Searching…' : 'Apply filters'}
           </button>
           <button type="button" className="btn-ghost" onClick={reset}>Reset</button>
+
+          <div className="ml-auto flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-ink-700">
+              <input type="checkbox" className="sr-only peer"
+                checked={includePending}
+                onChange={e => togglePending(e.target.checked)} />
+              <div className="w-10 h-5 bg-ink-200 rounded-full peer peer-checked:bg-amber-500 relative transition
+                              after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4
+                              after:bg-white after:rounded-full after:transition peer-checked:after:translate-x-5" />
+              Include PENDING submissions
+            </label>
+          </div>
         </div>
       </form>
+
+      {includePending && (
+        <div className="card p-3 mb-6 bg-amber-50 border-amber-200 text-sm text-amber-900">
+          Showing <b>PENDING</b> submissions alongside approved ones. Pending submissions
+          become visible to everyone once they pass the community vote threshold.
+        </div>
+      )}
 
       {error && <div className="card p-4 mb-6 border-red-200 bg-red-50 text-red-800 text-sm">{error}</div>}
 
@@ -145,7 +179,10 @@ function Row({ row, user, onVoted }) {
     <tr className="border-t border-ink-100 hover:bg-ink-50/60 transition">
       <td className="px-5 py-4">
         <div className="font-medium text-ink-900">{row.company}</div>
-        {isPending && <span className="badge bg-amber-100 text-amber-800 mt-1">PENDING</span>}
+        <div className="flex flex-wrap gap-1 mt-1">
+          {isPending && <span className="badge bg-amber-100 text-amber-800">PENDING</span>}
+          {row.anonymize && <span className="badge bg-ink-100 text-ink-700">Anonymous</span>}
+        </div>
       </td>
       <td className="px-5 py-4">
         <div className="text-ink-900">{row.role_title}</div>
