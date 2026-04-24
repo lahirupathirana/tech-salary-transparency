@@ -1,0 +1,48 @@
+# ======================================================================
+# Ingress — routes external HTTP(S) traffic to the frontend.
+#
+# Prerequisites:
+#   An Ingress controller must be installed in the cluster, e.g.:
+#     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+#
+# TLS (recommended for production):
+#   - Install cert-manager: https://cert-manager.io/docs/installation/
+#   - Uncomment the tls block and annotations below.
+#   - Replace 'payfloor.example.com' with your actual domain.
+#
+# AWS EKS with ALB controller:
+#   Replace the annotations block with:
+#     kubernetes.io/ingress.class: alb
+#     alb.ingress.kubernetes.io/scheme: internet-facing
+#     alb.ingress.kubernetes.io/target-type: ip
+# ======================================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: payfloor-ingress
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: payfloor-ingress
+    app.kubernetes.io/part-of: payfloor
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    # Uncomment for automatic TLS via cert-manager:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  # Uncomment and update for TLS:
+  # tls:
+  #   - hosts:
+  #       - payfloor.example.com
+  #     secretName: payfloor-tls
+  rules:
+    - host: payfloor.example.com  # Replace with your domain or remove host to accept all
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

@@ -1,0 +1,48 @@
+# ======================================================================
+# Frontend Nginx ConfigMap
+#
+# In Kubernetes the BFF is reachable as "bff:4000" via ClusterIP DNS.
+# The proxy_pass directive below works identically to the Docker setup.
+# ======================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-nginx-conf
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: payfloor
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+      gzip on;
+      gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+      gzip_min_length 1024;
+      location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+      }
+      # API traffic is proxied to the BFF ClusterIP service.
+      location /api/ {
+        proxy_pass         http://bff:4000/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+      }
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+      location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+      }
+    }

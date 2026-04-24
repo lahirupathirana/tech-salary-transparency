@@ -1,0 +1,19 @@
+# ======================================================================
+# Salary Submission Service — ClusterIP Service
+# ======================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: salary-submission
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: salary-submission
+    app.kubernetes.io/part-of: payfloor
+spec:
+  type: ClusterIP
+  selector:
+    app: salary-submission
+  ports:
+    - name: http
+      port: 4002
+      targetPort: 4002

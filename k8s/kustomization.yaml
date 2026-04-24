@@ -1,0 +1,61 @@
+# ======================================================================
+# k8s/kustomization.yaml — apply ALL manifests in the correct order.
+#
+# Usage:
+#   kubectl apply -k k8s/
+#
+# Or apply manually in order:
+#   kubectl apply -f k8s/00-namespace.yaml
+#   kubectl apply -f k8s/01-secrets.yaml
+#   kubectl apply -f k8s/02-configmap.yaml
+#   kubectl apply -f k8s/postgres/
+#   # Wait for postgres to be ready, then:
+#   kubectl apply -f k8s/identity/
+#   kubectl apply -f k8s/salary-submission/
+#   kubectl apply -f k8s/vote/
+#   kubectl apply -f k8s/search/
+#   kubectl apply -f k8s/stats/
+#   kubectl apply -f k8s/bff/
+#   kubectl apply -f k8s/frontend/
+#   kubectl apply -f k8s/ingress.yaml
+# ======================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: payfloor
+
+resources:
+  # Cluster bootstrap
+  - 00-namespace.yaml
+  - 01-secrets.yaml
+  - 02-configmap.yaml
+
+  # Database (must be ready before services start)
+  - postgres/configmap-init-sql.yaml
+  - postgres/statefulset.yaml
+  - postgres/service.yaml
+
+  # Backend microservices
+  - identity/deployment.yaml
+  - identity/service.yaml
+  - salary-submission/deployment.yaml
+  - salary-submission/service.yaml
+  - vote/deployment.yaml
+  - vote/service.yaml
+  - search/deployment.yaml
+  - search/service.yaml
+  - stats/deployment.yaml
+  - stats/service.yaml
+
+  # BFF gateway
+  - bff/deployment.yaml
+  - bff/service.yaml
+
+  # Frontend
+  - frontend/configmap-nginx.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+
+  # Ingress (requires nginx ingress controller)
+  - ingress.yaml
+

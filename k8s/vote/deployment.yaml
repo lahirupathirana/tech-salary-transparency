@@ -1,0 +1,79 @@
+# ======================================================================
+# Vote Service — Deployment
+# ======================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: vote
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vote
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: vote
+        app.kubernetes.io/part-of: payfloor
+    spec:
+      containers:
+        - name: vote
+          image: ghcr.io/lahirupathirana/tst-vote:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4003
+          env:
+            - name: PORT
+              value: "4003"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_DB
+            - name: DATABASE_URL
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
+            - name: APPROVAL_THRESHOLD
+              valueFrom:
+                configMapKeyRef:
+                  name: payfloor-config
+                  key: APPROVAL_THRESHOLD
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4003
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4003
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

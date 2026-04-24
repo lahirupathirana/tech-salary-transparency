@@ -1,0 +1,12 @@
+# ======================================================================
+# Namespace — all PayFloor workloads live in the "payfloor" namespace.
+# Apply this first before any other manifest.
+# ======================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payfloor
+  labels:
+    app.kubernetes.io/name: payfloor
+    app.kubernetes.io/managed-by: kubectl
+

@@ -1,0 +1,84 @@
+# ======================================================================
+# Salary Submission Service — Deployment
+#
+# Accepts and validates salary submissions. No user email ever stored
+# here — privacy boundary enforced at the BFF layer.
+# ======================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: salary-submission
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: salary-submission
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: salary-submission
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: salary-submission
+        app.kubernetes.io/part-of: payfloor
+    spec:
+      containers:
+        - name: salary-submission
+          # Replace with your registry, e.g. ghcr.io/<org>/tst-salary-submission:latest
+          image: ghcr.io/lahirupathirana/tst-salary-submission:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4002
+          env:
+            - name: PORT
+              value: "4002"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_DB
+            - name: DATABASE_URL
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
+            - name: APPROVAL_THRESHOLD
+              valueFrom:
+                configMapKeyRef:
+                  name: payfloor-config
+                  key: APPROVAL_THRESHOLD
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+

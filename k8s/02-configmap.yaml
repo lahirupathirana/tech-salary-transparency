@@ -1,0 +1,16 @@
+# ======================================================================
+# ConfigMap — non-sensitive application configuration shared across
+# backend services. Adjust values per environment.
+# ======================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payfloor-config
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/part-of: payfloor
+data:
+  JWT_EXPIRES_IN: "12h"
+  BCRYPT_ROUNDS: "10"
+  APPROVAL_THRESHOLD: "3"
+

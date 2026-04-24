@@ -1,0 +1,95 @@
+# ======================================================================
+# Identity Service — Deployment
+#
+# Handles signup, login, bcrypt password hashing, and JWT issuance.
+# This is the ONLY service that stores user emails.
+# ======================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: identity
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: identity
+        app.kubernetes.io/part-of: payfloor
+    spec:
+      containers:
+        - name: identity
+          # Replace with your registry, e.g.  ghcr.io/<org>/tst-identity:latest
+          image: ghcr.io/lahirupathirana/tst-identity:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4001
+          env:
+            - name: PORT
+              value: "4001"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_DB
+            # Kubernetes env-var substitution: $(VAR) references earlier vars
+            - name: DATABASE_URL
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: JWT_SECRET
+            - name: JWT_EXPIRES_IN
+              valueFrom:
+                configMapKeyRef:
+                  name: payfloor-config
+                  key: JWT_EXPIRES_IN
+            - name: BCRYPT_ROUNDS
+              valueFrom:
+                configMapKeyRef:
+                  name: payfloor-config
+                  key: BCRYPT_ROUNDS
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+

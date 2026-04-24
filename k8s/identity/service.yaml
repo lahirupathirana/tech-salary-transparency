@@ -1,0 +1,21 @@
+# ======================================================================
+# Identity Service — ClusterIP Service
+# Internal only — exposed exclusively through the BFF.
+# ======================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/part-of: payfloor
+spec:
+  type: ClusterIP
+  selector:
+    app: identity
+  ports:
+    - name: http
+      port: 4001
+      targetPort: 4001
+

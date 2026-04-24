@@ -1,0 +1,25 @@
+# ======================================================================
+# PostgreSQL — Service (ClusterIP)
+#
+# Accessible within the cluster as "postgres:5432" from any pod in the
+# payfloor namespace (or "postgres.payfloor.svc.cluster.local:5432"
+# from other namespaces).
+# ======================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+
