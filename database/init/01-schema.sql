@@ -88,6 +88,21 @@ CREATE TABLE IF NOT EXISTS community.votes (
 CREATE INDEX IF NOT EXISTS idx_votes_submission ON community.votes(submission_id);
 
 -- ---------------------------------------------------------------------
+-- FEEDBACK SCHEMA
+-- ---------------------------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS feedback;
+
+CREATE TABLE IF NOT EXISTS feedback.messages (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    submitter_token UUID,
+    category        VARCHAR(20) NOT NULL DEFAULT 'GENERAL',
+    message         TEXT NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_submitter_token ON feedback.messages(submitter_token);
+
+-- ---------------------------------------------------------------------
 -- SEED DATA (small set so the UI is not empty on first boot)
 -- ---------------------------------------------------------------------
 INSERT INTO salary.submissions
