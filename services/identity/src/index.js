@@ -15,7 +15,7 @@
  * keep salary records disjoint from user PII.
  */
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 
@@ -23,7 +23,8 @@ const PORT = process.env.PORT || 4001;
 const DATABASE_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
-const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+const parsedRounds = parseInt(process.env.BCRYPT_ROUNDS ?? '10', 10);
+const BCRYPT_ROUNDS = Number.isNaN(parsedRounds) ? 10 : parsedRounds;
 
 if (!DATABASE_URL || !JWT_SECRET) {
   console.error('[identity] Missing DATABASE_URL or JWT_SECRET');
