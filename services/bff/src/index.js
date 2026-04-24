@@ -34,10 +34,23 @@ app.use(express.json({ limit: '100kb' }));
 async function call(url, opts = {}) {
   const res = await fetch(url, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    headers: {
+      Accept: 'application/json',
+      ...(opts.headers || {}),
+      ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
+    },
   });
+
   const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
+  let body = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch (err) {
+      console.error('[bff] upstream returned invalid JSON:', url, err);
+      throw new Error('Invalid upstream JSON');
+    }
+  }
   return { status: res.status, body };
 }
 
