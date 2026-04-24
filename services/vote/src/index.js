@@ -19,7 +19,9 @@ const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 4003;
 const DATABASE_URL = process.env.DATABASE_URL;
-const APPROVAL_THRESHOLD = parseInt(process.env.APPROVAL_THRESHOLD || '3', 10);
+const defaultThreshold = 3;
+const parsedThreshold = parseInt(process.env.APPROVAL_THRESHOLD ?? `${defaultThreshold}`, 10);
+const APPROVAL_THRESHOLD = Number.isNaN(parsedThreshold) || parsedThreshold < 1 ? defaultThreshold : parsedThreshold;
 if (!DATABASE_URL) { console.error('[vote] DATABASE_URL missing'); process.exit(1); }
 
 const pool = new Pool({ connectionString: DATABASE_URL });
