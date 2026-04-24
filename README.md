@@ -45,7 +45,8 @@ A microservice-based salary transparency platform for tech professionals. Built 
 | `vote`              | 4003 | Up/down votes; promotes `PENDING` → `APPROVED` at threshold.         |
 | `search`            | 4004 | Filtered lookups over `APPROVED` submissions.                        |
 | `stats`             | 4005 | Averages, percentiles (`PERCENTILE_CONT`), distributions.            |
-| `postgres`          | 5432 | Single instance; logical schemas `identity`, `salary`, `community`.  |
+| `feedback`          | 4006 | Stores user feedback and feature requests for product improvements.  |
+| `postgres`          | 5432 | Single instance; logical schemas `identity`, `salary`, `community`, `feedback`.  |
 
 ### Privacy design
 

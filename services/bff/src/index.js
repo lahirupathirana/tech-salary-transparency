@@ -23,6 +23,7 @@ const SUBMISSION_URL = process.env.SUBMISSION_URL || 'http://salary-submission:4
 const VOTE_URL       = process.env.VOTE_URL       || 'http://vote:4003';
 const SEARCH_URL     = process.env.SEARCH_URL     || 'http://search:4004';
 const STATS_URL      = process.env.STATS_URL      || 'http://stats:4005';
+const FEEDBACK_URL   = process.env.FEEDBACK_URL   || 'http://feedback:4006';
 
 if (!JWT_SECRET) { console.error('[bff] JWT_SECRET missing'); process.exit(1); }
 
@@ -125,6 +126,42 @@ app.post('/votes', requireAuth, async (req, res) => {
     });
     return res.status(r.status).json(r.body);
   } catch { res.status(502).json({ error: 'vote service unreachable' }); }
+});
+
+// ====================================================================
+// FEEDBACK
+// ====================================================================
+
+app.post('/feedback', requireAuth, async (req, res) => {
+  try {
+    const payload = {
+      ...req.body,
+      submitterToken: req.user.sub,
+    };
+    const r = await call(`${FEEDBACK_URL}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return res.status(r.status).json(r.body);
+  } catch (err) {
+    console.error('[bff] feedback:', err);
+    return res.status(502).json({ error: 'feedback service unreachable' });
+  }
+});
+
+app.get('/feedback', requireAuth, async (req, res) => {
+  const query = new URLSearchParams({
+    submitterToken: req.user.sub,
+    limit: req.query.limit || '50',
+    offset: req.query.offset || '0',
+  }).toString();
+  try {
+    const r = await call(`${FEEDBACK_URL}/feedback?${query}`);
+    return res.status(r.status).json(r.body);
+  } catch (err) {
+    console.error('[bff] feedback list:', err);
+    return res.status(502).json({ error: 'feedback service unreachable' });
+  }
 });
 
 // ====================================================================

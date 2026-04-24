@@ -103,6 +103,20 @@ services:
     networks:
       - internal
 
+  # -------- FEEDBACK SERVICE ------------------------------------------
+  feedback:
+    build: ./services/feedback
+    container_name: tst-feedback
+    restart: unless-stopped
+    environment:
+      PORT: 4006
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
   # -------- BFF (Backend-for-Frontend) --------------------------------
   bff:
     build: ./services/bff
@@ -116,12 +130,14 @@ services:
       VOTE_URL: http://vote:4003
       SEARCH_URL: http://search:4004
       STATS_URL: http://stats:4005
+      FEEDBACK_URL: http://feedback:4006
     depends_on:
       - identity
       - salary-submission
       - vote
       - search
       - stats
+      - feedback
     ports:
       - "4000:4000"
     networks:
