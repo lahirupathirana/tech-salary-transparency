@@ -1,0 +1,81 @@
+# ======================================================================
+# Notification Service — Deployment
+# ======================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: notification
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: notification
+        app.kubernetes.io/part-of: payfloor
+    spec:
+      containers:
+        - name: notification
+          image: ghcr.io/lahirupathirana/tst-notification:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4006
+          env:
+            - name: PORT
+              value: "4006"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: POSTGRES_DB
+            - name: DATABASE_URL
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
+            - name: SMTP_HOST
+              value: "localhost"
+            - name: SMTP_PORT
+              value: "1025"
+            - name: SMTP_FROM
+              value: "noreply@payfloor.dev"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4006
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4006
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+

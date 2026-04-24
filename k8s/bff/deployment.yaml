@@ -1,0 +1,77 @@
+# ======================================================================
+# BFF (Backend-for-Frontend) — Deployment
+#
+# The single entry point for the React frontend. Verifies JWTs,
+# aggregates upstream service responses, and enforces auth policy.
+# ======================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: bff
+    app.kubernetes.io/part-of: payfloor
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bff
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: bff
+        app.kubernetes.io/part-of: payfloor
+    spec:
+      containers:
+        - name: bff
+          image: ghcr.io/lahirupathirana/tst-bff:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: payfloor-secrets
+                  key: JWT_SECRET
+            # Internal service URLs — Kubernetes DNS resolves these
+            # within the payfloor namespace automatically.
+            - name: IDENTITY_URL
+              value: "http://identity:4001"
+            - name: SUBMISSION_URL
+              value: "http://salary-submission:4002"
+            - name: VOTE_URL
+              value: "http://vote:4003"
+            - name: SEARCH_URL
+              value: "http://search:4004"
+            - name: STATS_URL
+              value: "http://stats:4005"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

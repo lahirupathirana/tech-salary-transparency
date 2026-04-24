@@ -1,0 +1,17 @@
+{
+  "name": "tst-notification-service",
+  "version": "1.0.0",
+  "description": "Notification Service - event-driven notifications for salary submissions, approvals, and votes.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0",
+    "nodemailer": "^6.9.7",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
+

@@ -1,0 +1,20 @@
+# ======================================================================
+# BFF Service — ClusterIP
+# The frontend Nginx proxies /api/* to this service.
+# ======================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: bff
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: bff
+    app.kubernetes.io/part-of: payfloor
+spec:
+  type: ClusterIP
+  selector:
+    app: bff
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000

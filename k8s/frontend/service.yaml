@@ -1,0 +1,19 @@
+# ======================================================================
+# Frontend Service — ClusterIP (exposed via Ingress)
+# ======================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: payfloor
+  labels:
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/part-of: payfloor
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

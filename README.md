@@ -298,6 +298,190 @@ All frontend requests go through `/api/*` (Nginx proxies to the BFF on `:4000`).
 
 ---
 
+---
+
+## Kubernetes Deployment
+
+The `k8s/` directory contains production-ready Kubernetes manifests for every component.
+
+### Directory layout
+
+```
+k8s/
+├── kustomization.yaml          # Apply everything with: kubectl apply -k k8s/
+├── 00-namespace.yaml           # Namespace: payfloor
+├── 01-secrets.yaml             # Sensitive credentials (edit before applying!)
+├── 02-configmap.yaml           # Non-sensitive app config
+├── postgres/
+│   ├── configmap-init-sql.yaml # Schema + seed SQL mounted as init scripts
+│   ├── statefulset.yaml        # PostgreSQL 16-alpine StatefulSet (1 replica)
+│   └── service.yaml            # ClusterIP: postgres:5432
+├── identity/
+│   ├── deployment.yaml         # 2 replicas, rolling update
+│   └── service.yaml            # ClusterIP: identity:4001
+├── salary-submission/
+│   ├── deployment.yaml
+│   └── service.yaml            # ClusterIP: salary-submission:4002
+├── vote/
+│   ├── deployment.yaml
+│   └── service.yaml            # ClusterIP: vote:4003
+├── search/
+│   ├── deployment.yaml
+│   └── service.yaml            # ClusterIP: search:4004
+├── stats/
+│   ├── deployment.yaml
+│   └── service.yaml            # ClusterIP: stats:4005
+├── bff/
+│   ├── deployment.yaml
+│   └── service.yaml            # ClusterIP: bff:4000
+├── frontend/
+│   ├── configmap-nginx.yaml    # Nginx config (proxies /api/* → BFF)
+│   ├── deployment.yaml         # 2 replicas; nginx.conf mounted from ConfigMap
+│   └── service.yaml            # ClusterIP: frontend:80
+└── ingress.yaml                # Ingress → frontend (nginx ingress controller)
+```
+
+### Key design decisions
+
+| Concern | Decision |
+| ------- | -------- |
+| Storage | PostgreSQL uses a **StatefulSet** + `volumeClaimTemplate` for a stable PVC |
+| Secrets | Kubernetes `Secret` (`stringData`); replace with External Secrets / Sealed Secrets for production |
+| Service mesh | All services use `ClusterIP`; only `frontend` is exposed externally via Ingress |
+| Env var injection | `DATABASE_URL` is constructed with Kubernetes `$(VAR)` interpolation from secret-sourced vars |
+| Health probes | Every deployment has `readinessProbe` + `livenessProbe` on the `/health` endpoint |
+| Nginx config | Mounted as a ConfigMap volume — no image rebuild needed for Nginx tuning |
+
+### Prerequisites
+
+* A running Kubernetes cluster (EKS, GKE, kind, minikube, etc.)
+* `kubectl` configured for the cluster
+* An **Ingress controller** installed, e.g. ingress-nginx:
+
+  ```bash
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+  ```
+
+* Container images built and pushed to a registry (see below).
+
+### 1. Build and push images
+
+```bash
+REGISTRY=ghcr.io/lahirupathirana   # replace with your registry
+
+docker build -t $REGISTRY/tst-frontend:latest          ./frontend
+docker build -t $REGISTRY/tst-bff:latest               ./services/bff
+docker build -t $REGISTRY/tst-identity:latest          ./services/identity
+docker build -t $REGISTRY/tst-salary-submission:latest ./services/salary-submission
+docker build -t $REGISTRY/tst-vote:latest              ./services/vote
+docker build -t $REGISTRY/tst-search:latest            ./services/search
+docker build -t $REGISTRY/tst-stats:latest             ./services/stats
+
+docker push $REGISTRY/tst-frontend:latest
+docker push $REGISTRY/tst-bff:latest
+docker push $REGISTRY/tst-identity:latest
+docker push $REGISTRY/tst-salary-submission:latest
+docker push $REGISTRY/tst-vote:latest
+docker push $REGISTRY/tst-search:latest
+docker push $REGISTRY/tst-stats:latest
+```
+
+Then update the `image:` field in each `k8s/<service>/deployment.yaml` to match your registry.
+
+### 2. Configure secrets
+
+Edit `k8s/01-secrets.yaml` and replace the placeholder values:
+
+```bash
+# Generate strong secrets
+JWT_SECRET=$(openssl rand -base64 48)
+PG_PASS=$(openssl rand -base64 24 | tr -d '/+=')
+
+# Patch the secrets file (or edit manually)
+sed -i "s|CHANGE_ME_STRONG_PASSWORD|$PG_PASS|g"                      k8s/01-secrets.yaml
+sed -i "s|CHANGE_ME_STRONG_JWT_SECRET_MIN_32_CHARS|$JWT_SECRET|g"    k8s/01-secrets.yaml
+```
+
+> **Never commit real secrets to source control.** For production use
+> [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) or
+> the [AWS Secrets Manager + External Secrets Operator](https://external-secrets.io/).
+
+### 3. Deploy with Kustomize (one command)
+
+```bash
+kubectl apply -k k8s/
+```
+
+Or apply in stages for more control:
+
+```bash
+kubectl apply -f k8s/00-namespace.yaml
+kubectl apply -f k8s/01-secrets.yaml
+kubectl apply -f k8s/02-configmap.yaml
+
+# Database — wait until ready before applying services
+kubectl apply -f k8s/postgres/
+kubectl rollout status statefulset/postgres -n payfloor
+
+# Microservices
+kubectl apply -f k8s/identity/
+kubectl apply -f k8s/salary-submission/
+kubectl apply -f k8s/vote/
+kubectl apply -f k8s/search/
+kubectl apply -f k8s/stats/
+
+# BFF and frontend
+kubectl apply -f k8s/bff/
+kubectl apply -f k8s/frontend/
+
+# Ingress
+kubectl apply -f k8s/ingress.yaml
+```
+
+### 4. Verify
+
+```bash
+kubectl get all -n payfloor
+kubectl get ingress -n payfloor
+# All Deployments should show READY 2/2
+# StatefulSet postgres should show READY 1/1
+```
+
+### 5. Access the application
+
+Update your DNS (or `/etc/hosts` for local) to point `payfloor.example.com` at the
+Ingress controller's external IP, then open `http://payfloor.example.com`.
+
+For a quick local test with port-forward:
+
+```bash
+kubectl port-forward svc/frontend 8080:80 -n payfloor
+# Open http://localhost:8080
+```
+
+### 6. Kubernetes operations
+
+| Task | Command |
+| ---- | ------- |
+| View all resources | `kubectl get all -n payfloor` |
+| Tail BFF logs | `kubectl logs -f deploy/bff -n payfloor` |
+| Restart a deployment | `kubectl rollout restart deploy/bff -n payfloor` |
+| Scale a service | `kubectl scale deploy/search --replicas=3 -n payfloor` |
+| DB shell | `kubectl exec -it statefulset/postgres -n payfloor -- psql -U tst_user tst_db` |
+| Backup DB | `kubectl exec statefulset/postgres -n payfloor -- pg_dump -U tst_user tst_db > backup.sql` |
+| Tear down (keep PVC) | `kubectl delete -k k8s/ --ignore-not-found` |
+| Wipe everything | `kubectl delete namespace payfloor` |
+
+### TLS / HTTPS
+
+Uncomment the `tls` block and `cert-manager` annotation in `k8s/ingress.yaml`, then install cert-manager:
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+```
+
+---
+
 ## License
 
 MSc coursework project — provided as-is for educational purposes.
