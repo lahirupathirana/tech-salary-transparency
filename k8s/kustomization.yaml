@@ -51,6 +51,10 @@ resources:
   - bff/deployment.yaml
   - bff/service.yaml
 
+  # Notification service
+  - notification/deployment.yaml
+  - notification/service.yaml
+
   # Frontend
   - frontend/configmap-nginx.yaml
   - frontend/deployment.yaml
