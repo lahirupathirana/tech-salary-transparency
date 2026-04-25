@@ -31,7 +31,8 @@ app.get('/search', async (req, res) => {
     limit = 50, offset = 0, includePending,
   } = req.query;
 
-  const includePendingFlag = String(includePending).toLowerCase() === 'true';
+  // const includePendingFlag = String(includePending).toLowerCase() === 'true';
+  const includePendingFlag = ['1', 'true', 'yes'].includes(String(includePending).toLowerCase());
   const parseNum = (value) => {
     const num = parseFloat(value);
     return Number.isFinite(num) ? num : null;
@@ -44,9 +45,9 @@ app.get('/search', async (req, res) => {
   if (!includePendingFlag) {
     conditions.push(`status = 'APPROVED'`);
   }
-  if (company)  push(`LOWER(company) LIKE ?`, `%${company.toLowerCase()}%`);
-  if (role)     push(`LOWER(role_title) LIKE ?`, `%${role.toLowerCase()}%`);
-  if (level)    push(`level = ?`, level);
+  if (company) push(`LOWER(company) LIKE ?`, `%${company.toLowerCase()}%`);
+  if (role) push(`LOWER(role_title) LIKE ?`, `%${role.toLowerCase()}%`);
+  if (level) push(`level = ?`, level);
   if (location) push(`LOWER(location) LIKE ?`, `%${location.toLowerCase()}%`);
   if (currency) push(`currency = ?`, currency.toUpperCase());
   const minSalaryValue = parseNum(minSalary);
@@ -55,8 +56,8 @@ app.get('/search', async (req, res) => {
   const maxExpValue = parseNum(maxExp);
   if (minSalaryValue !== null) push(`base_salary >= ?`, minSalaryValue);
   if (maxSalaryValue !== null) push(`base_salary <= ?`, maxSalaryValue);
-  if (minExpValue !== null)    push(`years_experience >= ?`, minExpValue);
-  if (maxExpValue !== null)    push(`years_experience <= ?`, maxExpValue);
+  if (minExpValue !== null) push(`years_experience >= ?`, minExpValue);
+  if (maxExpValue !== null) push(`years_experience <= ?`, maxExpValue);
 
   const whereSql = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const safeLimit = Math.min(parseInt(limit, 10) || 50, 200);
